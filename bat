@@ -4,6 +4,32 @@ local UIS = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local LP = Players.LocalPlayer
 
+-- ============ SAVE / LOAD SETTINGS ============
+local settingsFile = "AngryHubAimbotSettings.json"
+local function loadSettings()
+	local suc, data = pcall(function() return game:GetService("HttpService"):JSONDecode(readfile(settingsFile)) end)
+	if suc and data then
+		if data.speed then State.aimbotSpeed = data.speed end
+		-- تحميل الكيبايند مع التحقق من وجوده في Enum
+		if data.aimbotKey then
+			local kc = Enum.KeyCode[data.aimbotKey]
+			if kc then Keys.aimbot = kc end
+		end
+		if data.guiHideKey then
+			local kc = Enum.KeyCode[data.guiHideKey]
+			if kc then Keys.guiHide = kc end
+		end
+	end
+end
+local function saveSettings()
+	local data = {
+		speed = State.aimbotSpeed,
+		aimbotKey = Keys.aimbot.Name,
+		guiHideKey = Keys.guiHide.Name,
+	}
+	pcall(function() writefile(settingsFile, game:GetService("HttpService"):JSONEncode(data)) end)
+end
+
 -- ============ STATE ============
 local State = {
 	aimbotEnabled = false,
@@ -22,9 +48,12 @@ local State = {
 }
 
 local Keys = {
-	aimbot      = Enum.KeyCode.E,   -- يدعم الآن كيبورد أو يد تحكم
+	aimbot      = Enum.KeyCode.E,
 	guiHide     = Enum.KeyCode.LeftControl,
 }
+
+-- تحميل الإعدادات المحفوظة أولاً
+loadSettings()
 
 -- ============ HELPERS ============
 local function getTarget()
@@ -141,7 +170,7 @@ end
 
 -- ============ GUI ============
 local gui = Instance.new("ScreenGui")
-gui.Name = "BatAimbotUI"
+gui.Name = "AngryHubAimbotUI"
 gui.ResetOnSpawn = false
 gui.DisplayOrder = 9999
 gui.IgnoreGuiInset = true
@@ -185,11 +214,11 @@ local function getKeyName(kc)
 	return n:sub(1,4):upper()
 end
 
--- Main frame
+-- Main frame (أسود)
 local main = Instance.new("Frame", gui)
 main.Size = UDim2.new(0, W, 0, H)
 main.Position = UDim2.new(0.5, -W/2, 0.5, -H/2)
-main.BackgroundColor3 = C.bg
+main.BackgroundColor3 = Color3.new(0, 0, 0)
 main.BorderSizePixel = 0
 mkCorner(main, 10)
 mkStroke(main, C.border, 1)
@@ -210,7 +239,7 @@ local titleLbl = Instance.new("TextLabel", header)
 titleLbl.Size = UDim2.new(1, -50, 1, 0)
 titleLbl.Position = UDim2.new(0, 14, 0, 0)
 titleLbl.BackgroundTransparency = 1
-titleLbl.Text = "BAT AIMBOT"
+titleLbl.Text = "ANGRY HUB AIMBOT"
 titleLbl.TextColor3 = C.accent
 titleLbl.Font = Enum.Font.GothamBlack
 titleLbl.TextSize = 15
@@ -264,7 +293,7 @@ local function makeRow(rh)
 	return r
 end
 
--- Keybind chip (يقبل كيبورد ويد تحكم)
+-- Keybind chip (يقبل كيبورد ويد تحكم، ويحفظ فوراً)
 local function makeKeybindChip(parent, keyRef, xPos)
 	local chip = Instance.new("TextButton", parent)
 	chip.Size = UDim2.new(0, 34, 0, 20)
@@ -294,7 +323,6 @@ local function makeKeybindChip(parent, keyRef, xPos)
 		chip.TextColor3 = C.text
 		lconn = UIS.InputBegan:Connect(function(inp)
 			if not listening then return end
-			-- دعم لوحة المفاتيح ويد التحكم 1 و 2
 			local isKb = inp.UserInputType == Enum.UserInputType.Keyboard
 			local isGP = inp.UserInputType == Enum.UserInputType.Gamepad1
 				or inp.UserInputType == Enum.UserInputType.Gamepad2
@@ -306,6 +334,7 @@ local function makeKeybindChip(parent, keyRef, xPos)
 			Keys[keyRef] = inp.KeyCode
 			chip.Text = getKeyName(inp.KeyCode)
 			chip.TextColor3 = C.accent
+			saveSettings() -- حفظ فوري
 		end)
 	end)
 end
@@ -434,6 +463,7 @@ local function makeSpeedRow()
 		n = math.clamp(math.floor(n), 1, 500)
 		State.aimbotSpeed = n
 		box.Text = tostring(n)
+		saveSettings()
 	end
 
 	minusBtn.MouseButton1Click:Connect(function() updateSpeed(State.aimbotSpeed - 1) end)
@@ -472,7 +502,7 @@ end)
 
 makeSpeedRow()
 
--- صف إخفاء الواجهة (يبقى كما هو للكيبورد فقط)
+-- Hide GUI row
 do
 	local row = makeRow(40)
 	local lbl = Instance.new("TextLabel", row)
@@ -493,7 +523,7 @@ openBtn.Size = UDim2.new(0, 60, 0, 28)
 openBtn.Position = UDim2.new(0, 10, 0, 10)
 openBtn.BackgroundColor3 = C.header
 openBtn.BorderSizePixel = 0
-openBtn.Text = "BAT"
+openBtn.Text = "ANGRY"
 openBtn.TextColor3 = C.accent
 openBtn.Font = Enum.Font.GothamBlack
 openBtn.TextSize = 13
@@ -504,7 +534,7 @@ openBtn.MouseButton1Click:Connect(function()
 	main.Visible = not main.Visible
 end)
 
--- ====== KEYBOARD / GAMEPAD ======
+-- ====== INPUT ======
 UIS.InputBegan:Connect(function(inp, gp)
 	if gp then return end
 	local kc = inp.KeyCode
@@ -514,12 +544,10 @@ UIS.InputBegan:Connect(function(inp, gp)
 		or inp.UserInputType == Enum.UserInputType.Gamepad2
 	if not isKb and not isGP then return end
 
-	-- زر التفعيل الموحد (كيبورد أو يد)
 	if (isKb or isGP) and kc == Keys.aimbot then
 		State.aimbotEnabled = not State.aimbotEnabled
 		if toggleRefs.aimbot then toggleRefs.aimbot(State.aimbotEnabled) end
 		if State.aimbotEnabled then startAimbot() else stopAimbot() end
-	-- إخفاء الواجهة (كيبورد فقط)
 	elseif isKb and kc == Keys.guiHide then
 		main.Visible = not main.Visible
 	end
