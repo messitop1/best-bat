@@ -22,8 +22,7 @@ local State = {
 }
 
 local Keys = {
-	aimbot      = Enum.KeyCode.E,
-	aimbotPad   = Enum.KeyCode.ButtonR2,
+	aimbot      = Enum.KeyCode.E,   -- يدعم الآن كيبورد أو يد تحكم
 	guiHide     = Enum.KeyCode.LeftControl,
 }
 
@@ -265,7 +264,7 @@ local function makeRow(rh)
 	return r
 end
 
--- Keybind chip
+-- Keybind chip (يقبل كيبورد ويد تحكم)
 local function makeKeybindChip(parent, keyRef, xPos)
 	local chip = Instance.new("TextButton", parent)
 	chip.Size = UDim2.new(0, 34, 0, 20)
@@ -295,15 +294,17 @@ local function makeKeybindChip(parent, keyRef, xPos)
 		chip.TextColor3 = C.text
 		lconn = UIS.InputBegan:Connect(function(inp)
 			if not listening then return end
-			if inp.UserInputType ~= Enum.UserInputType.Keyboard then return end
+			-- دعم لوحة المفاتيح ويد التحكم 1 و 2
+			local isKb = inp.UserInputType == Enum.UserInputType.Keyboard
+			local isGP = inp.UserInputType == Enum.UserInputType.Gamepad1
+				or inp.UserInputType == Enum.UserInputType.Gamepad2
+			if not isKb and not isGP then return end
+			if inp.KeyCode == Enum.KeyCode.Unknown then return end
+
 			listening = false
 			lconn:Disconnect(); lconn = nil
-			if inp.KeyCode == Enum.KeyCode.Escape then
-				chip.Text = getKeyName(Keys[keyRef])
-			else
-				Keys[keyRef] = inp.KeyCode
-				chip.Text = getKeyName(inp.KeyCode)
-			end
+			Keys[keyRef] = inp.KeyCode
+			chip.Text = getKeyName(inp.KeyCode)
 			chip.TextColor3 = C.accent
 		end)
 	end)
@@ -471,59 +472,7 @@ end)
 
 makeSpeedRow()
 
-do
-	local row = makeRow(40)
-	local lbl = Instance.new("TextLabel", row)
-	lbl.Size = UDim2.new(1, -70, 1, 0)
-	lbl.Position = UDim2.new(0, 12, 0, 0)
-	lbl.BackgroundTransparency = 1
-	lbl.Text = "Aimbot (Pad)"
-	lbl.TextColor3 = C.text
-	lbl.Font = Enum.Font.GothamBold
-	lbl.TextSize = 12
-	lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-	local chip = Instance.new("TextButton", row)
-	chip.Size = UDim2.new(0, 54, 0, 20)
-	chip.Position = UDim2.new(1, -64, 0.5, -10)
-	chip.BackgroundColor3 = C.keybind
-	chip.BorderSizePixel = 0
-	chip.Text = getKeyName(Keys.aimbotPad)
-	chip.TextColor3 = C.accent
-	chip.Font = Enum.Font.GothamBold
-	chip.TextSize = 9
-	chip.ZIndex = 8
-	mkCorner(chip, 5)
-	mkStroke(chip, C.border, 1)
-
-	local listening2 = false
-	local lconn2 = nil
-	chip.MouseButton1Click:Connect(function()
-		if listening2 then
-			listening2 = false
-			if lconn2 then lconn2:Disconnect(); lconn2 = nil end
-			chip.Text = getKeyName(Keys.aimbotPad)
-			chip.TextColor3 = C.accent
-			return
-		end
-		listening2 = true
-		chip.Text = "···"
-		chip.TextColor3 = C.text
-		lconn2 = UIS.InputBegan:Connect(function(inp)
-			if not listening2 then return end
-			local isGP = inp.UserInputType == Enum.UserInputType.Gamepad1
-				or inp.UserInputType == Enum.UserInputType.Gamepad2
-			if not isGP then return end
-			if inp.KeyCode == Enum.KeyCode.Unknown then return end
-			listening2 = false
-			lconn2:Disconnect(); lconn2 = nil
-			Keys.aimbotPad = inp.KeyCode
-			chip.Text = getKeyName(inp.KeyCode)
-			chip.TextColor3 = C.accent
-		end)
-	end)
-end
-
+-- صف إخفاء الواجهة (يبقى كما هو للكيبورد فقط)
 do
 	local row = makeRow(40)
 	local lbl = Instance.new("TextLabel", row)
@@ -555,7 +504,7 @@ openBtn.MouseButton1Click:Connect(function()
 	main.Visible = not main.Visible
 end)
 
--- ====== KEYBOARD ======
+-- ====== KEYBOARD / GAMEPAD ======
 UIS.InputBegan:Connect(function(inp, gp)
 	if gp then return end
 	local kc = inp.KeyCode
@@ -565,10 +514,12 @@ UIS.InputBegan:Connect(function(inp, gp)
 		or inp.UserInputType == Enum.UserInputType.Gamepad2
 	if not isKb and not isGP then return end
 
-	if (isKb and kc == Keys.aimbot) or (isGP and kc == Keys.aimbotPad) then
+	-- زر التفعيل الموحد (كيبورد أو يد)
+	if (isKb or isGP) and kc == Keys.aimbot then
 		State.aimbotEnabled = not State.aimbotEnabled
 		if toggleRefs.aimbot then toggleRefs.aimbot(State.aimbotEnabled) end
 		if State.aimbotEnabled then startAimbot() else stopAimbot() end
+	-- إخفاء الواجهة (كيبورد فقط)
 	elseif isKb and kc == Keys.guiHide then
 		main.Visible = not main.Visible
 	end
