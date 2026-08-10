@@ -10,14 +10,11 @@ local function loadSettings()
 	local suc, data = pcall(function() return game:GetService("HttpService"):JSONDecode(readfile(settingsFile)) end)
 	if suc and data then
 		if data.speed then State.aimbotSpeed = data.speed end
-		-- تحميل الكيبايند مع التحقق من وجوده في Enum
 		if data.aimbotKey then
-			local kc = Enum.KeyCode[data.aimbotKey]
-			if kc then Keys.aimbot = kc end
+			pcall(function() Keys.aimbot = Enum.KeyCode[data.aimbotKey] end)
 		end
 		if data.guiHideKey then
-			local kc = Enum.KeyCode[data.guiHideKey]
-			if kc then Keys.guiHide = kc end
+			pcall(function() Keys.guiHide = Enum.KeyCode[data.guiHideKey] end)
 		end
 	end
 end
@@ -52,7 +49,7 @@ local Keys = {
 	guiHide     = Enum.KeyCode.LeftControl,
 }
 
--- تحميل الإعدادات المحفوظة أولاً
+-- Load saved settings
 loadSettings()
 
 -- ============ HELPERS ============
@@ -214,14 +211,14 @@ local function getKeyName(kc)
 	return n:sub(1,4):upper()
 end
 
--- Main frame (أسود)
+-- Main frame (اسود بدون جرادينت)
 local main = Instance.new("Frame", gui)
 main.Size = UDim2.new(0, W, 0, H)
 main.Position = UDim2.new(0.5, -W/2, 0.5, -H/2)
-main.BackgroundColor3 = Color3.new(0, 0, 0)
+main.BackgroundColor3 = Color3.new(0, 0, 0) -- اسود
 main.BorderSizePixel = 0
 mkCorner(main, 10)
-mkStroke(main, C.border, 1)
+mkStroke(main, C.border, 1) -- حدود خفيفة
 
 -- Header
 local header = Instance.new("Frame", main)
@@ -293,7 +290,7 @@ local function makeRow(rh)
 	return r
 end
 
--- Keybind chip (يقبل كيبورد ويد تحكم، ويحفظ فوراً)
+-- Keybind chip (يقبل كيبورد ويد تحكم، ويحفظ التغيير)
 local function makeKeybindChip(parent, keyRef, xPos)
 	local chip = Instance.new("TextButton", parent)
 	chip.Size = UDim2.new(0, 34, 0, 20)
@@ -334,7 +331,7 @@ local function makeKeybindChip(parent, keyRef, xPos)
 			Keys[keyRef] = inp.KeyCode
 			chip.Text = getKeyName(inp.KeyCode)
 			chip.TextColor3 = C.accent
-			saveSettings() -- حفظ فوري
+			saveSettings() -- حفظ بعد التغيير
 		end)
 	end)
 end
@@ -438,7 +435,7 @@ local function makeSpeedRow()
 	box.Size = UDim2.new(1, -8, 1, 0)
 	box.Position = UDim2.new(0, 4, 0, 0)
 	box.BackgroundTransparency = 1
-	box.Text = tostring(State.aimbotSpeed)
+	box.Text = tostring(State.aimbotSpeed) -- محملة مسبقاً
 	box.TextColor3 = C.accent
 	box.Font = Enum.Font.GothamBold
 	box.TextSize = 13
@@ -463,7 +460,7 @@ local function makeSpeedRow()
 		n = math.clamp(math.floor(n), 1, 500)
 		State.aimbotSpeed = n
 		box.Text = tostring(n)
-		saveSettings()
+		saveSettings() -- حفظ إلى الملف
 	end
 
 	minusBtn.MouseButton1Click:Connect(function() updateSpeed(State.aimbotSpeed - 1) end)
